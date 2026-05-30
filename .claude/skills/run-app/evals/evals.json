@@ -1,0 +1,23 @@
+{
+  "skill_name": "run-app",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Start the app so I can test it locally",
+      "expected_output": "Both backend server (port 8000) and frontend server (port 5173) are running and accessible. The app loads at http://localhost:5173",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Launch the painting analysis app - I need to test uploading a painting",
+      "expected_output": "Backend and frontend servers are both running and ready. User can navigate to http://localhost:5173 and see the upload interface",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Run the server so I can develop on the frontend",
+      "expected_output": "Both servers are running with hot reload enabled. Frontend changes will auto-refresh in the browser, backend Python changes will auto-reload",
+      "files": []
+    }
+  ]
+}
