@@ -90,45 +90,45 @@ export default function PaintingDetailPage() {
 
       {data && (
         <div className="flex-1 min-h-0 flex flex-col lg:overflow-hidden px-6 md:px-10 pt-4 pb-2">
-          {/* Title block */}
-          <header className="shrink-0 mb-4 rise">
-            <p className="eyebrow">Catalogue No. {String(data.id).padStart(3, "0")}</p>
-            <h1 className="font-display text-2xl md:text-4xl font-medium leading-[0.97] mt-2 text-ink">
-              {data.title}
-            </h1>
-            <p className="mt-1.5 text-sm text-muted font-display">
-              {data.artist || "Unknown artist"}
-              {data.year ? ` · ${data.year}` : ""}
-            </p>
-          </header>
-
           {/* Two-column layout */}
           <div className="lg:flex-1 lg:min-h-0 grid lg:grid-cols-[1.45fr_1fr] gap-8 lg:gap-12">
 
-            {/* Left: painting */}
-            <div className="flex flex-col items-center rise py-2">
-              <div
-                style={{
-                  width: `min(100%, calc((100dvh - 395px) * ${data.width / data.height} + 40px))`,
-                }}
-              >
-                <BoundingBoxOverlay
-                  filename={data.filename}
-                  title={data.title}
-                  width={data.width}
-                  height={data.height}
-                  elements={data.elements}
-                  highlightedId={highlightedId}
-                  onHover={setHighlightedId}
-                  onSelect={handleSelect}
-                  zoomed={false}
-                  onToggleZoom={() => {
-                    zoomTriggerRef.current = document.activeElement as HTMLElement | null;
-                    setZoomed(true);
+            {/* Left: title block + painting */}
+            <div className="flex flex-col">
+              <header className="shrink-0 mb-4 rise">
+                <p className="eyebrow">Catalogue No. {String(data.id).padStart(3, "0")}</p>
+                <h1 className="font-display text-2xl md:text-4xl font-medium leading-[0.97] mt-2 text-ink">
+                  {data.title}
+                </h1>
+                <p className="mt-1.5 text-sm text-muted font-display">
+                  {data.artist || "Unknown artist"}
+                  {data.year ? ` · ${data.year}` : ""}
+                </p>
+              </header>
+              <div className="flex flex-col items-center rise py-2">
+                <div
+                  style={{
+                    width: `min(100%, calc((100dvh - 395px) * ${data.width / data.height} + 40px))`,
                   }}
-                  showBoxes={showBoxes}
-                  onToggleBoxes={() => setShowBoxes((v) => !v)}
-                />
+                >
+                  <BoundingBoxOverlay
+                    filename={data.filename}
+                    title={data.title}
+                    width={data.width}
+                    height={data.height}
+                    elements={data.elements}
+                    highlightedId={highlightedId}
+                    onHover={setHighlightedId}
+                    onSelect={handleSelect}
+                    zoomed={false}
+                    onToggleZoom={() => {
+                      zoomTriggerRef.current = document.activeElement as HTMLElement | null;
+                      setZoomed(true);
+                    }}
+                    showBoxes={showBoxes}
+                    onToggleBoxes={() => setShowBoxes((v) => !v)}
+                  />
+                </div>
               </div>
             </div>
 
