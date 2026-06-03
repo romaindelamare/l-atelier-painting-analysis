@@ -14,6 +14,15 @@ class PaintingCreate(BaseModel):
     notes: str | None = None
 
 
+class PaintingUpdate(BaseModel):
+    """Partial metadata update — only provided fields are written."""
+
+    title: str | None = None
+    artist: str | None = None
+    year: str | None = None
+    notes: str | None = None
+
+
 class DetectedElementRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

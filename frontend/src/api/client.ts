@@ -46,3 +46,16 @@ export async function uploadPainting(
 
   return handle(await fetch("/api/paintings", { method: "POST", body: form }));
 }
+
+export async function updatePainting(
+  id: number,
+  meta: UploadMetadata,
+): Promise<PaintingDetail> {
+  return handle(
+    await fetch(`/api/paintings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(meta),
+    }),
+  );
+}

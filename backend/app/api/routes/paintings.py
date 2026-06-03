@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from app.api.dependencies import get_painting_repository, get_painting_service
 from app.interfaces.element_detector import DetectionError
 from app.repositories.painting_repository import PaintingRepository
-from app.schemas.painting import PaintingCreate, PaintingDetail, PaintingSummary
+from app.schemas.painting import PaintingCreate, PaintingDetail, PaintingSummary, PaintingUpdate
 from app.services.painting_service import PaintingService
 
 router = APIRouter(prefix="/api/paintings", tags=["paintings"])
@@ -76,6 +76,20 @@ def get_painting(
     repository: PaintingRepository = Depends(get_painting_repository),
 ) -> PaintingDetail:
     painting = repository.get(painting_id)
+    if painting is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."
+        )
+    return PaintingDetail.model_validate(painting)
+
+
+@router.patch("/{painting_id}", response_model=PaintingDetail)
+def update_painting(
+    painting_id: int,
+    body: PaintingUpdate,
+    repository: PaintingRepository = Depends(get_painting_repository),
+) -> PaintingDetail:
+    painting = repository.update(painting_id, body)
     if painting is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."

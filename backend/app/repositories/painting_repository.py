@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.detected_element import DetectedElement
 from app.models.painting import Painting
 from app.models.palette_color import PaletteColor
+from app.schemas.painting import PaintingUpdate
 
 
 class PaintingRepository:
@@ -48,3 +49,13 @@ class PaintingRepository:
             )
         )
         return self._db.scalars(stmt).first()
+
+    def update(self, painting_id: int, data: PaintingUpdate) -> Painting | None:
+        painting = self.get(painting_id)
+        if painting is None:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(painting, field, value)
+        self._db.commit()
+        self._db.refresh(painting)
+        return painting

@@ -8,19 +8,19 @@ export default function GalleryPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 md:px-10">
-      <section className="pt-8 md:pt-14 pb-5 rise">
+      <section className="pt-4 md:pt-8 pb-2 rise">
         <p className="eyebrow">Permanent Collection</p>
-        <h1 className="font-display text-5xl md:text-7xl font-medium leading-[0.95] mt-4 text-ink">
+        <h1 className="font-display text-5xl md:text-7xl font-medium leading-[0.95] mt-2 text-ink">
           The Collection
         </h1>
         {data && data.length > 0 && (
-          <p className="mt-5 text-muted font-display text-lg">
+          <p className="mt-2 text-muted font-display text-lg">
             {data.length} {data.length === 1 ? "work" : "works"} on view.
           </p>
         )}
       </section>
 
-      <div className="h-px bg-line mb-8" />
+      <div className="h-px bg-line mb-4" />
 
       {loading && (
         <p className="text-muted eyebrow py-20 text-center">Opening the archive…</p>
@@ -46,7 +46,7 @@ export default function GalleryPage() {
       )}
 
       {data && data.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8 pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6 pb-6">
           {data.map((p, i) => (
             <div
               key={p.id}

@@ -10,10 +10,7 @@ interface Props {
   highlightedId: number | null;
   onHover: (id: number | null) => void;
   onSelect?: (id: number) => void;
-  zoomed?: boolean;
-  onToggleZoom?: () => void;
   showBoxes?: boolean;
-  onToggleBoxes?: () => void;
 }
 
 /**
@@ -31,15 +28,12 @@ export default function BoundingBoxOverlay({
   highlightedId,
   onHover,
   onSelect,
-  zoomed = false,
-  onToggleZoom,
   showBoxes = true,
-  onToggleBoxes,
 }: Props) {
   const dimmed = highlightedId !== null;
 
   return (
-    <div className="group relative bg-[#fbfaf6] p-3 sm:p-5 ring-1 ring-line shadow-[0_0_22px_0_rgba(28,24,19,0.18)]">
+    <div className="relative bg-[#fbfaf6] p-3 sm:p-5 ring-1 ring-line shadow-[0_0_22px_0_rgba(28,24,19,0.18)]">
       <div
         className="relative w-full"
         style={{ aspectRatio: `${width} / ${height}` }}
@@ -114,47 +108,6 @@ export default function BoundingBoxOverlay({
         </svg>
       </div>
 
-      <div className={[
-        "absolute top-2 right-2 flex gap-1 z-10 transition-opacity duration-200",
-        zoomed ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-      ].join(" ")}>
-        {onToggleBoxes && (
-          <button
-            onClick={onToggleBoxes}
-            title={showBoxes ? "Hide boxes" : "Show boxes"}
-            aria-label={showBoxes ? "Hide boxes" : "Show boxes"}
-            className="w-7 h-7 flex items-center justify-center rounded bg-ink/70 text-paper cursor-pointer focus-visible:ring-2 focus-visible:ring-paper/60 focus-visible:outline-none"
-          >
-            {showBoxes ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            )}
-          </button>
-        )}
-        {onToggleZoom && (
-          <button
-            onClick={onToggleZoom}
-            title={zoomed ? "Exit zoom" : "Zoom in"}
-            aria-label={zoomed ? "Exit zoom" : "Zoom in"}
-            className="w-7 h-7 flex items-center justify-center rounded bg-ink/70 text-paper cursor-pointer focus-visible:ring-2 focus-visible:ring-paper/60 focus-visible:outline-none"
-          >
-            {zoomed ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
-              </svg>
-            )}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
