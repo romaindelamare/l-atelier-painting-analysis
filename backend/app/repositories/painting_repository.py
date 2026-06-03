@@ -59,3 +59,11 @@ class PaintingRepository:
         self._db.commit()
         self._db.refresh(painting)
         return painting
+
+    def delete(self, painting_id: int) -> Painting | None:
+        painting = self.get(painting_id)
+        if painting is None:
+            return None
+        self._db.delete(painting)
+        self._db.commit()
+        return painting

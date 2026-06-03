@@ -9,7 +9,12 @@ const FIELDS = [
   { key: "year", label: "Year", placeholder: "—" },
 ] as const;
 
-type MetaKey = (typeof FIELDS)[number]["key"] | "notes";
+type MetaKey =
+  | (typeof FIELDS)[number]["key"]
+  | "notes"
+  | "location_owner"
+  | "location_city"
+  | "location_country";
 
 export default function ImageUploader({
   onUploaded,
@@ -23,6 +28,9 @@ export default function ImageUploader({
     artist: "",
     year: "",
     notes: "",
+    location_owner: "",
+    location_city: "",
+    location_country: "",
   });
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,6 +45,16 @@ export default function ImageUploader({
       if (old) URL.revokeObjectURL(old);
       return URL.createObjectURL(next);
     });
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation();
+    setFile(null);
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return null;
+    });
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function submit() {
@@ -91,17 +109,10 @@ export default function ImageUploader({
                   className="h-full w-full object-contain"
                 />
               </div>
-              <span className="absolute bottom-3 left-1/2 -translate-x-1/2 eyebrow text-ink/70">
-                Click to replace
-              </span>
+
             </>
           ) : (
             <div className="text-center px-8">
-              <div className="mx-auto mb-5 h-14 w-14 rounded-full border border-line flex items-center justify-center">
-                <span className="font-display text-3xl text-accent leading-none">
-                  +
-                </span>
-              </div>
               <p className="font-display text-2xl text-ink">
                 {dragging ? "Release to place" : "Hang a painting"}
               </p>
@@ -140,6 +151,28 @@ export default function ImageUploader({
               />
             </label>
           ))}
+          <div>
+            <span className="eyebrow block mb-3">Location</span>
+            <div className="space-y-4 pl-0.5">
+              {(
+                [
+                  { key: "location_owner", label: "Owner / Museum", placeholder: "Louvre, Private collection…" },
+                  { key: "location_city", label: "City", placeholder: "Paris" },
+                  { key: "location_country", label: "Country", placeholder: "France" },
+                ] as const
+              ).map((f) => (
+                <label key={f.key} className="block">
+                  <span className="eyebrow text-muted/70">{f.label}</span>
+                  <input
+                    value={meta[f.key]}
+                    placeholder={f.placeholder}
+                    onChange={(e) => setMeta((m) => ({ ...m, [f.key]: e.target.value }))}
+                    className="mt-1 w-full bg-transparent border-b border-line py-2 font-display text-lg text-ink placeholder:text-muted/50 focus:border-accent transition-colors outline-none"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
           <label className="block">
             <span className="eyebrow">Notes</span>
             <textarea
@@ -162,7 +195,7 @@ export default function ImageUploader({
           onClick={submit}
           disabled={!file || busy}
           className={[
-            "mt-9 w-full py-4 eyebrow text-paper transition-all duration-300",
+            "mt-9 w-full py-4 eyebrow !text-paper transition-all duration-300",
             !file || busy
               ? "bg-ink/30 cursor-not-allowed"
               : "bg-ink hover:bg-accent",

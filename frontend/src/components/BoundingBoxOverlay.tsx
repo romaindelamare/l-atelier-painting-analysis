@@ -3,7 +3,7 @@ import type { DetectedElement } from "../types/painting";
 
 interface Props {
   filename: string;
-  title: string;
+  title?: string;
   width: number;
   height: number;
   elements: DetectedElement[];
@@ -11,6 +11,8 @@ interface Props {
   onHover: (id: number | null) => void;
   onSelect?: (id: number) => void;
   showBoxes?: boolean;
+  /** Stable display number per element id (matches the element list badges). */
+  numbers: Map<number, number>;
 }
 
 /**
@@ -29,6 +31,7 @@ export default function BoundingBoxOverlay({
   onHover,
   onSelect,
   showBoxes = true,
+  numbers,
 }: Props) {
   const dimmed = highlightedId !== null;
 
@@ -40,7 +43,7 @@ export default function BoundingBoxOverlay({
       >
         <img
           src={imageUrl(filename)}
-          alt={title}
+          alt={title ?? "Painting"}
           className="absolute inset-0 h-full w-full object-cover"
         />
 
@@ -49,7 +52,7 @@ export default function BoundingBoxOverlay({
           className="absolute inset-0 h-full w-full"
           style={{ opacity: showBoxes ? 1 : 0, transition: "opacity 0.25s" }}
         >
-          {elements.map((e, i) => {
+          {elements.map((e) => {
             const active = highlightedId === e.id;
             const w = e.bottom_right_x - e.top_left_x;
             const h = e.bottom_right_y - e.top_left_y;
@@ -100,7 +103,7 @@ export default function BoundingBoxOverlay({
                   fill="#f4f0e7"
                   opacity={dimmed && !active ? 0.2 : 1}
                 >
-                  {i + 1}
+                  {numbers.get(e.id)}
                 </text>
               </g>
             );

@@ -17,11 +17,16 @@ class Painting(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # User-provided metadata (all optional except title, which falls back to filename).
-    title: Mapped[str] = mapped_column(String(255))
+    # User-provided metadata (all optional).
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     artist: Mapped[str | None] = mapped_column(String(255), nullable=True)
     year: Mapped[str | None] = mapped_column(String(32), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Current whereabouts of the work — each field is independently optional.
+    location_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location_city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_country: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     # Stored file + dimensions (used to scale the bounding-box overlay).
     filename: Mapped[str] = mapped_column(String(255))

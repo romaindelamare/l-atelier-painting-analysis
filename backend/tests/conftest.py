@@ -54,6 +54,9 @@ class FakeDetector(ElementDetector):
             DetectedElementOut(
                 name="apple",
                 description="a red apple",
+                category="object",
+                subcategory="fruit",
+                specific_type="apple",
                 top_left_x=1,
                 top_left_y=2,
                 bottom_right_x=10,

@@ -43,6 +43,9 @@ export async function uploadPainting(
   if (meta.artist) form.append("artist", meta.artist);
   if (meta.year) form.append("year", meta.year);
   if (meta.notes) form.append("notes", meta.notes);
+  if (meta.location_owner) form.append("location_owner", meta.location_owner);
+  if (meta.location_city) form.append("location_city", meta.location_city);
+  if (meta.location_country) form.append("location_country", meta.location_country);
 
   return handle(await fetch("/api/paintings", { method: "POST", body: form }));
 }
@@ -58,4 +61,18 @@ export async function updatePainting(
       body: JSON.stringify(meta),
     }),
   );
+}
+
+export async function deletePainting(id: number): Promise<void> {
+  const response = await fetch(`/api/paintings/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const body = await response.json();
+      detail = body.detail ?? detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
 }

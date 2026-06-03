@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
-from app.api.dependencies import get_painting_repository, get_painting_service
+from app.api.dependencies import get_image_storage, get_painting_repository, get_painting_service
 from app.interfaces.element_detector import DetectionError
 from app.repositories.painting_repository import PaintingRepository
+from app.interfaces.image_storage import ImageStorage
 from app.schemas.painting import PaintingCreate, PaintingDetail, PaintingSummary, PaintingUpdate
 from app.services.painting_service import PaintingService
 
@@ -20,6 +21,9 @@ async def upload_painting(
     artist: str | None = Form(None),
     year: str | None = Form(None),
     notes: str | None = Form(None),
+    location_owner: str | None = Form(None),
+    location_city: str | None = Form(None),
+    location_country: str | None = Form(None),
     service: PaintingService = Depends(get_painting_service),
 ) -> PaintingDetail:
     if file.content_type not in _ALLOWED_TYPES:
@@ -34,7 +38,15 @@ async def upload_painting(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file upload."
         )
 
-    meta = PaintingCreate(title=title, artist=artist, year=year, notes=notes)
+    meta = PaintingCreate(
+        title=title,
+        artist=artist,
+        year=year,
+        notes=notes,
+        location_owner=location_owner,
+        location_city=location_city,
+        location_country=location_country,
+    )
     try:
         painting = service.analyze_and_store(
             data=data,
@@ -81,6 +93,22 @@ def get_painting(
             status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."
         )
     return PaintingDetail.model_validate(painting)
+
+
+@router.delete("/{painting_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_painting(
+    painting_id: int,
+    repository: PaintingRepository = Depends(get_painting_repository),
+    storage: ImageStorage = Depends(get_image_storage),
+) -> None:
+    painting = repository.delete(painting_id)
+    if painting is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."
+        )
+    file_path = storage.path_for(painting.filename)
+    if file_path.exists():
+        file_path.unlink()
 
 
 @router.patch("/{painting_id}", response_model=PaintingDetail)

@@ -14,7 +14,7 @@ export default function PaintingCard({ painting }: { painting: PaintingSummary }
         <div className="aspect-[4/5] overflow-hidden bg-paper-deep">
           <img
             src={imageUrl(painting.filename)}
-            alt={painting.title}
+            alt={painting.title ?? "Untitled painting"}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
           />
@@ -24,7 +24,7 @@ export default function PaintingCard({ painting }: { painting: PaintingSummary }
       {/* Placard */}
       <div className="mt-4 pl-1">
         <h3 className="font-display text-xl text-ink leading-tight group-hover:text-accent transition-colors">
-          {painting.title}
+          {painting.title ?? <span className="text-muted/50 italic">Unknown</span>}
         </h3>
         <p className="text-sm text-muted mt-0.5">
           {painting.artist || "Unknown"}

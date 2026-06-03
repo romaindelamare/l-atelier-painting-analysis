@@ -6,8 +6,6 @@ its own — each collaborator is an injected abstraction.
 """
 
 import io
-from pathlib import Path
-
 from PIL import Image
 
 from app.interfaces.image_storage import ImageStorage
@@ -50,10 +48,13 @@ class PaintingService:
         stored_name = self._storage.save(data, original_filename)
 
         painting = Painting(
-            title=meta.title or Path(original_filename).stem or "Untitled",
+            title=meta.title or None,
             artist=meta.artist,
             year=meta.year,
             notes=meta.notes,
+            location_owner=meta.location_owner,
+            location_city=meta.location_city,
+            location_country=meta.location_country,
             filename=stored_name,
             content_type=content_type or "image/png",
             width=width,
@@ -64,6 +65,9 @@ class PaintingService:
             DetectedElement(
                 name=e.name,
                 description=e.description,
+                category=e.category,
+                subcategory=e.subcategory,
+                specific_type=e.specific_type,
                 top_left_x=e.top_left_x,
                 top_left_y=e.top_left_y,
                 bottom_right_x=e.bottom_right_x,

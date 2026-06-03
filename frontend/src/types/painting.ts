@@ -4,6 +4,9 @@ export interface DetectedElement {
   id: number;
   name: string;
   description: string | null;
+  category: string;
+  subcategory: string | null;
+  specific_type: string | null;
   top_left_x: number;
   top_left_y: number;
   bottom_right_x: number;
@@ -21,7 +24,7 @@ export interface PaletteColor {
 
 export interface PaintingSummary {
   id: number;
-  title: string;
+  title: string | null;
   artist: string | null;
   year: string | null;
   filename: string;
@@ -33,10 +36,13 @@ export interface PaintingSummary {
 
 export interface PaintingDetail {
   id: number;
-  title: string;
+  title: string | null;
   artist: string | null;
   year: string | null;
   notes: string | null;
+  location_owner: string | null;
+  location_city: string | null;
+  location_country: string | null;
   filename: string;
   content_type: string;
   width: number;
@@ -51,4 +57,7 @@ export interface UploadMetadata {
   artist?: string;
   year?: string;
   notes?: string;
+  location_owner?: string;
+  location_city?: string;
+  location_country?: string;
 }

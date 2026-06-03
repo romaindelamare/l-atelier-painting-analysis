@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import BoundingBoxOverlay from "../components/BoundingBoxOverlay";
 import ColorPalette from "../components/ColorPalette";
 import ElementList from "../components/ElementList";
-import { updatePainting } from "../api/client";
+import { deletePainting, updatePainting } from "../api/client";
 import { usePainting } from "../hooks/usePaintings";
 import type { PaintingDetail } from "../types/painting";
 
@@ -24,6 +24,7 @@ const FIELDS = [
 
 export default function PaintingDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { data: fetched, loading, error } = usePainting(Number(id));
   const [data, setData] = useState<PaintingDetail | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
@@ -32,12 +33,21 @@ export default function PaintingDetailPage() {
   const [zoomed, setZoomed] = useState(false);
   const [showBoxes, setShowBoxes] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editMeta, setEditMeta] = useState({ title: "", artist: "", year: "", notes: "" });
+  const [editMeta, setEditMeta] = useState({ title: "", artist: "", year: "", notes: "", location_owner: "", location_city: "", location_country: "" });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const zoomTriggerRef = useRef<HTMLElement | null>(null);
+
+  // Stable display number per element id, in the original detection order, so the
+  // list and the bounding-box badges always agree even though the list regroups.
+  const numbers = useMemo(
+    () => new Map((data?.elements ?? []).map((e, i) => [e.id, i + 1])),
+    [data]
+  );
 
   useEffect(() => {
     if (fetched) setData(fetched);
@@ -95,9 +105,24 @@ export default function PaintingDetailPage() {
       artist: data.artist ?? "",
       year: data.year ?? "",
       notes: data.notes ?? "",
+      location_owner: data.location_owner ?? "",
+      location_city: data.location_city ?? "",
+      location_country: data.location_country ?? "",
     });
     setSaveError(null);
     setEditing(true);
+  }
+
+  async function confirmDelete() {
+    if (!data) return;
+    setDeleting(true);
+    setConfirmingDelete(false);
+    try {
+      await deletePainting(data.id);
+      navigate("/collection");
+    } catch {
+      setDeleting(false);
+    }
   }
 
   async function saveEdits() {
@@ -181,6 +206,22 @@ export default function PaintingDetailPage() {
               )}
               {editing ? "Cancel" : "Edit"}
             </button>
+
+            {/* Delete */}
+            {!editing && (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                disabled={deleting}
+                className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5 disabled:opacity-40"
+                title="Delete painting"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            )}
+
           </div>
         )}
       </div>
@@ -202,12 +243,22 @@ export default function PaintingDetailPage() {
               <header className="shrink-0 mb-4 rise">
                 <p className="eyebrow">Catalogue No. {String(data.id).padStart(3, "0")}</p>
                 <h1 className="font-display text-2xl md:text-4xl font-medium leading-[0.97] mt-2 text-ink">
-                  {data.title}
+                  {data.title ?? <span className="text-muted/50 italic">Unknown</span>}
                 </h1>
                 <p className="mt-1.5 text-sm text-muted font-display">
                   {data.artist || "Unknown artist"}
                   {data.year ? ` · ${data.year}` : ""}
                 </p>
+                {(data.location_owner || data.location_city || data.location_country) && (
+                  <p className="mt-0.5 text-sm text-muted/75 font-display">
+                    {[
+                      data.location_owner,
+                      [data.location_city, data.location_country].filter(Boolean).join(", "),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </header>
               <div className="flex flex-col items-center rise py-2">
                 <div
@@ -217,7 +268,7 @@ export default function PaintingDetailPage() {
                 >
                   <BoundingBoxOverlay
                     filename={data.filename}
-                    title={data.title}
+                    title={data.title ?? undefined}
                     width={data.width}
                     height={data.height}
                     elements={data.elements}
@@ -225,6 +276,7 @@ export default function PaintingDetailPage() {
                     onHover={setHighlightedId}
                     onSelect={handleSelect}
                     showBoxes={showBoxes}
+                    numbers={numbers}
                   />
                 </div>
               </div>
@@ -252,11 +304,33 @@ export default function PaintingDetailPage() {
                           />
                         </label>
                       ))}
+                      <div>
+                        <span className="eyebrow block mb-3">Location</span>
+                        <div className="space-y-3 pl-0.5">
+                          {(
+                            [
+                              { key: "location_owner" as const, label: "Owner / Museum", placeholder: "Louvre, Private collection…" },
+                              { key: "location_city" as const, label: "City", placeholder: "Paris" },
+                              { key: "location_country" as const, label: "Country", placeholder: "France" },
+                            ]
+                          ).map((f) => (
+                            <label key={f.key} className="block">
+                              <span className="eyebrow text-muted/70">{f.label}</span>
+                              <input
+                                value={editMeta[f.key]}
+                                placeholder={f.placeholder}
+                                onChange={(e) => setEditMeta((m) => ({ ...m, [f.key]: e.target.value }))}
+                                className="mt-1 w-full bg-transparent border-b border-line py-2 font-display text-lg text-ink placeholder:text-muted/50 focus:border-accent transition-colors outline-none"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                       <label className="block">
                         <span className="eyebrow">Notes</span>
                         <textarea
                           value={editMeta.notes}
-                          rows={2}
+                          rows={5}
                           placeholder="Provenance, observations…"
                           onChange={(e) => setEditMeta((m) => ({ ...m, notes: e.target.value }))}
                           className="mt-1.5 w-full bg-transparent border-b border-line py-2 font-sans text-base text-ink placeholder:text-muted/50 focus:border-accent transition-colors outline-none resize-none"
@@ -275,7 +349,7 @@ export default function PaintingDetailPage() {
                     onClick={saveEdits}
                     disabled={saving}
                     className={[
-                      "shrink-0 mt-4 w-full py-4 eyebrow text-paper transition-all duration-300",
+                      "shrink-0 mt-4 w-full py-4 eyebrow !text-paper transition-all duration-300",
                       saving ? "bg-ink/30 cursor-not-allowed" : "bg-ink hover:bg-accent",
                     ].join(" ")}
                   >
@@ -317,6 +391,7 @@ export default function PaintingDetailPage() {
                         elements={data.elements}
                         highlightedId={highlightedId}
                         onHover={setHighlightedId}
+                        numbers={numbers}
                       />
                     )}
                     {activeTab === "notes" && (
@@ -342,6 +417,39 @@ export default function PaintingDetailPage() {
               )}
             </aside>
           </div>
+
+          {confirmingDelete && data && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center fade-in"
+              style={{ background: "rgba(28,24,19,0.45)" }}
+            >
+              <div className="bg-paper border border-line p-10 max-w-sm w-full mx-6 flex flex-col gap-6">
+                <div>
+                  <p className="eyebrow text-accent mb-3">Permanent action</p>
+                  <h2 className="font-display text-2xl font-medium text-ink leading-tight">
+                    Remove this work from the collection?
+                  </h2>
+                  <p className="mt-2 font-display text-base text-muted italic">
+                    "{data.title ?? "Unknown"}" will be permanently deleted along with its image file and all detected elements.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    className="flex-1 py-3 eyebrow text-muted border border-line hover:border-ink hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 py-3 eyebrow !text-paper bg-accent hover:bg-ink transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {zoomed && (
             <div
@@ -394,7 +502,7 @@ export default function PaintingDetailPage() {
                   >
                     <BoundingBoxOverlay
                       filename={data.filename}
-                      title={data.title}
+                      title={data.title ?? undefined}
                       width={data.width}
                       height={data.height}
                       elements={data.elements}
@@ -402,6 +510,7 @@ export default function PaintingDetailPage() {
                       onHover={setHighlightedId}
                       onSelect={handleSelect}
                       showBoxes={showBoxes}
+                      numbers={numbers}
                     />
                   </div>
                 </div>
@@ -440,6 +549,7 @@ export default function PaintingDetailPage() {
                         elements={data.elements}
                         highlightedId={highlightedId}
                         onHover={setHighlightedId}
+                        numbers={numbers}
                       />
                     )}
                     {activeTab === "notes" && (

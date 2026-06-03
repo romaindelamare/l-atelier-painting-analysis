@@ -12,6 +12,9 @@ class PaintingCreate(BaseModel):
     artist: str | None = None
     year: str | None = None
     notes: str | None = None
+    location_owner: str | None = None
+    location_city: str | None = None
+    location_country: str | None = None
 
 
 class PaintingUpdate(BaseModel):
@@ -21,6 +24,9 @@ class PaintingUpdate(BaseModel):
     artist: str | None = None
     year: str | None = None
     notes: str | None = None
+    location_owner: str | None = None
+    location_city: str | None = None
+    location_country: str | None = None
 
 
 class DetectedElementRead(BaseModel):
@@ -29,6 +35,9 @@ class DetectedElementRead(BaseModel):
     id: int
     name: str
     description: str | None
+    category: str
+    subcategory: str | None
+    specific_type: str | None
     top_left_x: float
     top_left_y: float
     bottom_right_x: float
@@ -52,7 +61,7 @@ class PaintingSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    title: str
+    title: str | None
     artist: str | None
     year: str | None
     filename: str
@@ -68,10 +77,13 @@ class PaintingDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    title: str
+    title: str | None
     artist: str | None
     year: str | None
     notes: str | None
+    location_owner: str | None
+    location_city: str | None
+    location_country: str | None
     filename: str
     content_type: str
     width: int

@@ -38,7 +38,7 @@ export default function GalleryPage() {
           </p>
           <Link
             to="/"
-            className="inline-block mt-7 px-7 py-3 eyebrow text-paper bg-ink hover:bg-accent transition-colors"
+            className="inline-block mt-7 px-7 py-3 eyebrow !text-paper bg-ink hover:bg-accent transition-colors"
           >
             Upload the first work
           </Link>
