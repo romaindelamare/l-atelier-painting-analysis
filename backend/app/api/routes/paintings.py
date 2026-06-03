@@ -2,7 +2,12 @@
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
-from app.api.dependencies import get_image_storage, get_painting_repository, get_painting_service
+from app.api.dependencies import (
+    get_image_storage,
+    get_painting_repository,
+    get_painting_service,
+    require_auth,
+)
 from app.interfaces.element_detector import DetectionError
 from app.repositories.painting_repository import PaintingRepository
 from app.interfaces.image_storage import ImageStorage
@@ -25,6 +30,7 @@ async def upload_painting(
     location_city: str | None = Form(None),
     location_country: str | None = Form(None),
     service: PaintingService = Depends(get_painting_service),
+    _: None = Depends(require_auth),
 ) -> PaintingDetail:
     if file.content_type not in _ALLOWED_TYPES:
         raise HTTPException(
@@ -100,6 +106,7 @@ def delete_painting(
     painting_id: int,
     repository: PaintingRepository = Depends(get_painting_repository),
     storage: ImageStorage = Depends(get_image_storage),
+    _: None = Depends(require_auth),
 ) -> None:
     painting = repository.delete(painting_id)
     if painting is None:
@@ -116,6 +123,7 @@ def update_painting(
     painting_id: int,
     body: PaintingUpdate,
     repository: PaintingRepository = Depends(get_painting_repository),
+    _: None = Depends(require_auth),
 ) -> PaintingDetail:
     painting = repository.update(painting_id, body)
     if painting is None:

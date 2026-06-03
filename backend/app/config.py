@@ -21,6 +21,14 @@ class Settings(BaseSettings):
 
     palette_size: int = 6
 
+    # Single-user authentication. ``auth_password`` is the login password and
+    # ``auth_jwt_secret`` signs the short-lived access tokens. Leaving either
+    # empty disables login (no valid credentials can be issued).
+    auth_password: str = ""
+    auth_jwt_secret: str = ""
+    access_token_ttl_minutes: int = 30
+    refresh_token_ttl_days: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

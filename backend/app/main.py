@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import paintings
+from app.api.routes import auth, paintings
 from app.config import get_settings
 from app.database import create_tables
 
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     image_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/images", StaticFiles(directory=image_dir), name="images")
 
+    app.include_router(auth.router)
     app.include_router(paintings.router)
 
     @app.get("/api/health")

@@ -5,6 +5,7 @@ import BoundingBoxOverlay from "../components/BoundingBoxOverlay";
 import ColorPalette from "../components/ColorPalette";
 import ElementList from "../components/ElementList";
 import { deletePainting, updatePainting } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { usePainting } from "../hooks/usePaintings";
 import type { PaintingDetail } from "../types/painting";
 
@@ -25,6 +26,7 @@ const FIELDS = [
 export default function PaintingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { data: fetched, loading, error } = usePainting(Number(id));
   const [data, setData] = useState<PaintingDetail | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
@@ -119,7 +121,7 @@ export default function PaintingDetailPage() {
     setConfirmingDelete(false);
     try {
       await deletePainting(data.id);
-      navigate("/collection");
+      navigate("/");
     } catch {
       setDeleting(false);
     }
@@ -144,7 +146,7 @@ export default function PaintingDetailPage() {
     <div className="h-full flex flex-col lg:overflow-hidden">
       {/* Header bar: back link + action buttons */}
       <div className="shrink-0 px-6 md:px-10 pt-4 pb-1 flex items-center justify-between">
-        <Link to="/collection" className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5">
+        <Link to="/" className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
           </svg>
@@ -186,6 +188,9 @@ export default function PaintingDetailPage() {
               Zoom
             </button>
 
+            {/* Edit & Delete — curator-only, shown when signed in. */}
+            {isAuthenticated && (
+              <>
             {/* Edit toggle */}
             <button
               onClick={editing ? () => setEditing(false) : startEditing}
@@ -220,6 +225,8 @@ export default function PaintingDetailPage() {
                 </svg>
                 {deleting ? "Deleting…" : "Delete"}
               </button>
+            )}
+              </>
             )}
 
           </div>

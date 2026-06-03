@@ -15,7 +15,13 @@ def client():
     app.dependency_overrides[get_image_storage] = lambda: storage
     app.dependency_overrides[get_element_detector] = lambda: detector
     try:
-        yield TestClient(app)
+        test_client = TestClient(app)
+        # Writes are now auth-guarded; log in once and keep the bearer token on
+        # the client so these tests exercise the happy (authenticated) path.
+        tokens = test_client.post("/api/auth/login", json={"password": "test-pass"})
+        access = tokens.json()["access_token"]
+        test_client.headers.update({"Authorization": f"Bearer {access}"})
+        yield test_client
     finally:
         app.dependency_overrides.clear()
 

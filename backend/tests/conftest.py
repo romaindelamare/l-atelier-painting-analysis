@@ -16,6 +16,8 @@ _TMP = Path(tempfile.mkdtemp(prefix="pod_tests_"))
 os.environ["DB_URL"] = f"sqlite:///{(_TMP / 'test.db').as_posix()}"
 os.environ["IMAGE_DIR"] = str(_TMP / "images")
 os.environ["INTERFAZE_API_KEY"] = "test-key"
+os.environ["AUTH_PASSWORD"] = "test-pass"
+os.environ["AUTH_JWT_SECRET"] = "test-secret"
 
 from PIL import Image  # noqa: E402
 
