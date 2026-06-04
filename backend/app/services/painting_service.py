@@ -72,8 +72,21 @@ class PaintingService:
                 top_left_y=e.top_left_y,
                 bottom_right_x=e.bottom_right_x,
                 bottom_right_y=e.bottom_right_y,
+                source="llm",
+                position=index,
+                # Freeze the full detection so the painting can always be reverted.
+                original_name=e.name,
+                original_description=e.description,
+                original_category=e.category,
+                original_subcategory=e.subcategory,
+                original_specific_type=e.specific_type,
+                original_position=index,
+                original_top_left_x=e.top_left_x,
+                original_top_left_y=e.top_left_y,
+                original_bottom_right_x=e.bottom_right_x,
+                original_bottom_right_y=e.bottom_right_y,
             )
-            for e in detected
+            for index, e in enumerate(detected, start=1)
         ]
         palette = [
             PaletteColor(

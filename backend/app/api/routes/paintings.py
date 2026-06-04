@@ -14,9 +14,20 @@ from app.interfaces.image_storage import ImageStorage
 from app.schemas.painting import PaintingCreate, PaintingDetail, PaintingSummary, PaintingUpdate
 from app.services.painting_service import PaintingService
 
+from app.models.painting import Painting
+
 router = APIRouter(prefix="/api/paintings", tags=["paintings"])
 
 _ALLOWED_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"}
+
+
+def painting_to_detail(painting: Painting) -> PaintingDetail:
+    """Build the API response, hiding soft-deleted elements (which stay in the DB)."""
+
+    visible_ids = {e.id for e in painting.elements if not e.is_deleted}
+    detail = PaintingDetail.model_validate(painting)
+    detail.elements = [e for e in detail.elements if e.id in visible_ids]
+    return detail
 
 
 @router.post("", response_model=PaintingDetail, status_code=status.HTTP_201_CREATED)
@@ -64,7 +75,7 @@ async def upload_painting(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
         ) from exc
-    return PaintingDetail.model_validate(painting)
+    return painting_to_detail(painting)
 
 
 @router.get("", response_model=list[PaintingSummary])
@@ -82,7 +93,7 @@ def list_paintings(
             width=p.width,
             height=p.height,
             created_at=p.created_at,
-            element_count=len(p.elements),
+            element_count=sum(1 for e in p.elements if not e.is_deleted),
         )
         for p in paintings
     ]
@@ -98,7 +109,7 @@ def get_painting(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."
         )
-    return PaintingDetail.model_validate(painting)
+    return painting_to_detail(painting)
 
 
 @router.delete("/{painting_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -130,4 +141,4 @@ def update_painting(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found."
         )
-    return PaintingDetail.model_validate(painting)
+    return painting_to_detail(painting)

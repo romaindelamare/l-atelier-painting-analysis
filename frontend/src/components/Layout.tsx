@@ -38,7 +38,12 @@ export default function Layout({ children }: { children: ReactNode }) {
                 already leads to the (sole) Collection view. */}
             {isAuthenticated && (
               <nav className="flex items-center gap-8">
-                <NavLink to="/" end className={navLink}>
+                <NavLink
+                  to="/"
+                  className={({ isActive }) =>
+                    navLink({ isActive: isActive || location.pathname.startsWith("/paintings") })
+                  }
+                >
                   Collection
                 </NavLink>
                 <NavLink to="/upload" className={navLink}>

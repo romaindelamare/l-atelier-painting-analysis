@@ -9,8 +9,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:8000",
-      "/images": "http://localhost:8000",
+      // Use 127.0.0.1 rather than "localhost": on Windows the latter can resolve to
+      // IPv6 (::1) first, where the IPv4-bound backend isn't listening.
+      "/api": "http://127.0.0.1:8000",
+      "/images": "http://127.0.0.1:8000",
     },
   },
 });

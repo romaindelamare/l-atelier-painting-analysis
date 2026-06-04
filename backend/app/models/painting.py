@@ -36,10 +36,13 @@ class Painting(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
+    # Unfiltered on purpose: the delete-orphan cascade must still cover soft-deleted
+    # rows when the painting itself is deleted. Soft-deleted elements are filtered out
+    # in the response builder (see ``painting_to_detail``), not here.
     elements: Mapped[list["DetectedElement"]] = relationship(
         back_populates="painting",
         cascade="all, delete-orphan",
-        order_by="DetectedElement.id",
+        order_by="DetectedElement.position",
     )
     palette: Mapped[list["PaletteColor"]] = relationship(
         back_populates="painting",

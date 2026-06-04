@@ -8,6 +8,8 @@ import {
   setSession,
 } from "../auth/session";
 import type {
+  ElementCreate,
+  ElementUpdate,
   PaintingDetail,
   PaintingSummary,
   UploadMetadata,
@@ -176,4 +178,65 @@ export async function deletePainting(id: number): Promise<void> {
     }
     throw new Error(detail);
   }
+}
+
+// --- Element curation (auth-only) — each returns the refreshed painting ---------
+
+function elementsBase(paintingId: number): string {
+  return `/api/paintings/${paintingId}/elements`;
+}
+
+async function jsonAuth<T>(
+  url: string,
+  method: string,
+  body?: unknown,
+): Promise<T> {
+  return handle<T>(
+    await authFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    }),
+  );
+}
+
+export async function createElement(
+  paintingId: number,
+  body: ElementCreate,
+): Promise<PaintingDetail> {
+  return jsonAuth(elementsBase(paintingId), "POST", body);
+}
+
+export async function updateElement(
+  paintingId: number,
+  elementId: number,
+  body: ElementUpdate,
+): Promise<PaintingDetail> {
+  return jsonAuth(`${elementsBase(paintingId)}/${elementId}`, "PATCH", body);
+}
+
+export async function deleteElement(
+  paintingId: number,
+  elementId: number,
+): Promise<PaintingDetail> {
+  return jsonAuth(`${elementsBase(paintingId)}/${elementId}`, "DELETE");
+}
+
+export async function bulkDeleteElements(
+  paintingId: number,
+  ids: number[],
+): Promise<PaintingDetail> {
+  return jsonAuth(`${elementsBase(paintingId)}/bulk-delete`, "POST", { ids });
+}
+
+export async function renumberElements(
+  paintingId: number,
+): Promise<PaintingDetail> {
+  return jsonAuth(`${elementsBase(paintingId)}/renumber`, "POST");
+}
+
+export async function revertElements(
+  paintingId: number,
+): Promise<PaintingDetail> {
+  return jsonAuth(`${elementsBase(paintingId)}/revert`, "POST");
 }

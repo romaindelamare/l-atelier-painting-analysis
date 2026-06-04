@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.detection import Level1Category
+
 
 class PaintingCreate(BaseModel):
     """Optional metadata supplied with an upload (the file arrives separately)."""
@@ -42,6 +44,46 @@ class DetectedElementRead(BaseModel):
     top_left_y: float
     bottom_right_x: float
     bottom_right_y: float
+
+    # Curation state + frozen original detection (so the UI can flag edited elements).
+    source: str
+    position: int
+    original_name: str | None = None
+    original_description: str | None = None
+    original_category: str | None = None
+    original_subcategory: str | None = None
+    original_specific_type: str | None = None
+    original_position: int | None = None
+    original_top_left_x: float | None = None
+    original_top_left_y: float | None = None
+    original_bottom_right_x: float | None = None
+    original_bottom_right_y: float | None = None
+
+
+class ElementCreate(BaseModel):
+    """A manually-added element: the curator picks a category and draws a box."""
+
+    category: Level1Category = "other"
+    subcategory: str | None = None
+    specific_type: str | None = None
+    top_left_x: float
+    top_left_y: float
+    bottom_right_x: float
+    bottom_right_y: float
+
+
+class ElementUpdate(BaseModel):
+    """Partial edit of an element. The bounding box is left untouched here."""
+
+    category: Level1Category | None = None
+    subcategory: str | None = None
+    specific_type: str | None = None
+
+
+class ElementBulkDelete(BaseModel):
+    """Soft-delete several elements in one request."""
+
+    ids: list[int]
 
 
 class PaletteColorRead(BaseModel):

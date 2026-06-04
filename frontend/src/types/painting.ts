@@ -11,6 +11,35 @@ export interface DetectedElement {
   top_left_y: number;
   bottom_right_x: number;
   bottom_right_y: number;
+  // Curation state + frozen original LLM detection.
+  source: string;
+  position: number;
+  original_name?: string | null;
+  original_category?: string | null;
+  original_subcategory?: string | null;
+  original_specific_type?: string | null;
+}
+
+/** A bounding box in image-pixel coordinates. */
+export interface ElementBox {
+  top_left_x: number;
+  top_left_y: number;
+  bottom_right_x: number;
+  bottom_right_y: number;
+}
+
+/** Payload to add a manually-drawn element. */
+export interface ElementCreate extends ElementBox {
+  category: string;
+  subcategory?: string | null;
+  specific_type?: string | null;
+}
+
+/** Partial edit of an element (the box is left untouched). */
+export interface ElementUpdate {
+  category?: string;
+  subcategory?: string | null;
+  specific_type?: string | null;
 }
 
 export interface PaletteColor {

@@ -4,10 +4,24 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import BoundingBoxOverlay from "../components/BoundingBoxOverlay";
 import ColorPalette from "../components/ColorPalette";
 import ElementList from "../components/ElementList";
-import { deletePainting, updatePainting } from "../api/client";
+import ElementForm, { type ElementFormValues } from "../components/ElementForm";
+import {
+  bulkDeleteElements,
+  createElement,
+  deleteElement,
+  deletePainting,
+  renumberElements,
+  revertElements,
+  updateElement,
+  updatePainting,
+} from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { usePainting } from "../hooks/usePaintings";
-import type { PaintingDetail } from "../types/painting";
+import type {
+  DetectedElement,
+  ElementBox,
+  PaintingDetail,
+} from "../types/painting";
 
 type Tab = "elements" | "notes" | "color";
 
@@ -40,14 +54,24 @@ export default function PaintingDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Element curation state (signed-in only).
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [addMode, setAddMode] = useState(false);
+  const [drawnBox, setDrawnBox] = useState<ElementBox | null>(null);
+  const [editingElement, setEditingElement] = useState<DetectedElement | null>(null);
+  const [elementBusy, setElementBusy] = useState(false);
+  const [elementError, setElementError] = useState<string | null>(null);
+  const [confirmingRenumber, setConfirmingRenumber] = useState(false);
+  const [confirmingRevert, setConfirmingRevert] = useState(false);
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const zoomTriggerRef = useRef<HTMLElement | null>(null);
 
-  // Stable display number per element id, in the original detection order, so the
-  // list and the bounding-box badges always agree even though the list regroups.
+  // Display number per element id, driven by the stored position so the list and the
+  // bounding-box badges always agree (and follow the Renumber button).
   const numbers = useMemo(
-    () => new Map((data?.elements ?? []).map((e, i) => [e.id, i + 1])),
+    () => new Map((data?.elements ?? []).map((e) => [e.id, e.position])),
     [data]
   );
 
@@ -142,6 +166,109 @@ export default function PaintingDetailPage() {
     }
   }
 
+  // --- Element curation -------------------------------------------------------
+
+  function toggleSelect(elementId: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(elementId)) next.delete(elementId);
+      else next.add(elementId);
+      return next;
+    });
+  }
+
+  function handleDrawComplete(box: ElementBox) {
+    setAddMode(false);
+    setElementError(null);
+    setDrawnBox(box);
+  }
+
+  async function submitAddElement(values: ElementFormValues) {
+    if (!data || !drawnBox) return;
+    setElementBusy(true);
+    setElementError(null);
+    try {
+      const updated = await createElement(data.id, {
+        ...drawnBox,
+        category: values.category,
+        subcategory: values.subcategory || null,
+        specific_type: values.specific_type || null,
+      });
+      setData(updated);
+      setDrawnBox(null);
+    } catch (err) {
+      setElementError(err instanceof Error ? err.message : "Could not add element.");
+    } finally {
+      setElementBusy(false);
+    }
+  }
+
+  async function submitEditElement(values: ElementFormValues) {
+    if (!data || !editingElement) return;
+    setElementBusy(true);
+    setElementError(null);
+    try {
+      const updated = await updateElement(data.id, editingElement.id, {
+        category: values.category,
+        subcategory: values.subcategory || null,
+        specific_type: values.specific_type || null,
+      });
+      setData(updated);
+      setEditingElement(null);
+    } catch (err) {
+      setElementError(err instanceof Error ? err.message : "Could not save element.");
+    } finally {
+      setElementBusy(false);
+    }
+  }
+
+  async function deleteOneElement(elementId: number) {
+    if (!data) return;
+    try {
+      const updated = await deleteElement(data.id, elementId);
+      setData(updated);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(elementId);
+        return next;
+      });
+    } catch {
+      /* surfaced on next action; keep the UI responsive */
+    }
+  }
+
+  async function deleteSelected() {
+    if (!data || selectedIds.size === 0) return;
+    const updated = await bulkDeleteElements(data.id, [...selectedIds]);
+    setData(updated);
+    setSelectedIds(new Set());
+  }
+
+  async function handleRenumber() {
+    if (!data) return;
+    setData(await renumberElements(data.id));
+  }
+
+  async function handleRevert() {
+    if (!data) return;
+    setConfirmingRevert(false);
+    setSelectedIds(new Set());
+    setData(await revertElements(data.id));
+  }
+
+  function openEditElement(element: DetectedElement) {
+    setElementError(null);
+    setEditingElement(element);
+  }
+
+  function elementToFormValues(element: DetectedElement): ElementFormValues {
+    return {
+      category: element.category || "other",
+      specific_type: element.specific_type ?? "",
+      subcategory: element.subcategory ?? "",
+    };
+  }
+
   return (
     <div className="h-full flex flex-col lg:overflow-hidden">
       {/* Header bar: back link + action buttons */}
@@ -226,6 +353,7 @@ export default function PaintingDetailPage() {
                 {deleting ? "Deleting…" : "Delete"}
               </button>
             )}
+
               </>
             )}
 
@@ -284,6 +412,9 @@ export default function PaintingDetailPage() {
                     onSelect={handleSelect}
                     showBoxes={showBoxes}
                     numbers={numbers}
+                    drawMode={isAuthenticated && addMode}
+                    onDrawComplete={handleDrawComplete}
+                    selectedIds={selectedIds}
                   />
                 </div>
               </div>
@@ -357,7 +488,7 @@ export default function PaintingDetailPage() {
                     disabled={saving}
                     className={[
                       "shrink-0 mt-4 w-full py-4 eyebrow !text-paper transition-all duration-300",
-                      saving ? "bg-ink/30 cursor-not-allowed" : "bg-ink hover:bg-accent",
+                      saving ? "bg-accent/30 cursor-not-allowed" : "bg-accent hover:bg-ink",
                     ].join(" ")}
                   >
                     {saving ? "Saving…" : "Save changes"}
@@ -394,12 +525,74 @@ export default function PaintingDetailPage() {
                     className="flex-1 overflow-y-auto min-h-0 pt-2"
                   >
                     {activeTab === "elements" && (
-                      <ElementList
-                        elements={data.elements}
-                        highlightedId={highlightedId}
-                        onHover={setHighlightedId}
-                        numbers={numbers}
-                      />
+                      <>
+                        {isAuthenticated && (
+                          <div className="flex flex-wrap items-center justify-end gap-3 pb-2 border-b border-line mb-1">
+                            <button
+                              onClick={() => { setElementError(null); setAddMode((v) => !v); }}
+                              className={["eyebrow transition-colors flex items-center gap-1.5", addMode ? "text-accent" : "text-muted hover:text-accent"].join(" ")}
+                              title={addMode ? "Cancel drawing" : "Draw a box to add an element"}
+                            >
+                              {addMode ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                              )}
+                              {addMode ? "Cancel" : "Add"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmingRenumber(true)}
+                              className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+                              title="Renumber elements by category"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+                              </svg>
+                              Renumber
+                            </button>
+                            <button
+                              onClick={() => setConfirmingRevert(true)}
+                              className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+                              title="Revert to the original detection"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 2v6h6"/><path d="M3 8a9 9 0 1 0 2.83-2.83L3 8"/>
+                              </svg>
+                              Revert
+                            </button>
+                            {selectedIds.size > 0 && (
+                              <>
+                                <span className="w-px h-3.5 bg-line" aria-hidden />
+                                <button
+                                  onClick={() => setConfirmingBulkDelete(true)}
+                                  className="eyebrow text-accent hover:text-ink transition-colors flex items-center gap-1.5"
+                                  title="Delete selected elements"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                  </svg>
+                                  Delete {selectedIds.size}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        <ElementList
+                          elements={data.elements}
+                          highlightedId={highlightedId}
+                          onHover={setHighlightedId}
+                          numbers={numbers}
+                          isAuthenticated={isAuthenticated}
+                          selectedIds={selectedIds}
+                          onToggleSelect={toggleSelect}
+                          onEdit={openEditElement}
+                          onDelete={deleteOneElement}
+                        />
+                      </>
                     )}
                     {activeTab === "notes" && (
                       <div className="pr-1">
@@ -427,7 +620,7 @@ export default function PaintingDetailPage() {
 
           {confirmingDelete && data && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center fade-in"
+              className="fixed inset-0 z-[60] flex items-center justify-center fade-in"
               style={{ background: "rgba(28,24,19,0.45)" }}
             >
               <div className="bg-paper border border-line p-10 max-w-sm w-full mx-6 flex flex-col gap-6">
@@ -452,6 +645,145 @@ export default function PaintingDetailPage() {
                     className="flex-1 py-3 eyebrow !text-paper bg-accent hover:bg-ink transition-colors"
                   >
                     Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk-delete confirmation. */}
+          {confirmingBulkDelete && selectedIds.size > 0 && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center fade-in"
+              style={{ background: "rgba(28,24,19,0.45)" }}
+            >
+              <div className="bg-paper border border-line p-10 max-w-sm w-full mx-6 flex flex-col gap-6">
+                <div>
+                  <p className="eyebrow text-accent mb-3">Permanent action</p>
+                  <h2 className="font-display text-2xl font-medium text-ink leading-tight">
+                    Delete {selectedIds.size} element{selectedIds.size > 1 ? "s" : ""}?
+                  </h2>
+                  <p className="mt-2 font-display text-base text-muted italic">
+                    The selected element{selectedIds.size > 1 ? "s" : ""} will be removed from this painting. The original detection is preserved and can be restored with Revert.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmingBulkDelete(false)}
+                    className="flex-1 py-3 eyebrow text-muted border border-line hover:border-ink hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => { setConfirmingBulkDelete(false); await deleteSelected(); }}
+                    className="flex-1 py-3 eyebrow !text-paper bg-accent hover:bg-ink transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add-element form (opens after a box is drawn). */}
+          {drawnBox && (
+            <ElementForm
+              title="New element"
+              submitLabel="Add element"
+              initial={{
+                category: "other",
+                specific_type: "",
+                subcategory: "",
+              }}
+              busy={elementBusy}
+              error={elementError}
+              onSubmit={submitAddElement}
+              onCancel={() => {
+                setDrawnBox(null);
+                setElementError(null);
+              }}
+            />
+          )}
+
+          {/* Edit-element form. */}
+          {editingElement && (
+            <ElementForm
+              title="Edit element"
+              submitLabel="Save changes"
+              initial={elementToFormValues(editingElement)}
+              busy={elementBusy}
+              error={elementError}
+              onSubmit={submitEditElement}
+              onCancel={() => {
+                setEditingElement(null);
+                setElementError(null);
+              }}
+            />
+          )}
+
+          {/* Renumber confirmation. */}
+          {confirmingRenumber && data && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center fade-in"
+              style={{ background: "rgba(28,24,19,0.45)" }}
+            >
+              <div className="bg-paper border border-line p-10 max-w-sm w-full mx-6 flex flex-col gap-6">
+                <div>
+                  <p className="eyebrow text-accent mb-3">Reorder elements</p>
+                  <h2 className="font-display text-2xl font-medium text-ink leading-tight">
+                    Renumber all elements?
+                  </h2>
+                  <p className="mt-2 font-display text-base text-muted italic">
+                    All elements will be renumbered in display order — by category, then alphabetically.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmingRenumber(false)}
+                    className="flex-1 py-3 eyebrow text-muted border border-line hover:border-ink hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => { setConfirmingRenumber(false); await handleRenumber(); }}
+                    className="flex-1 py-3 eyebrow !text-paper bg-accent hover:bg-ink transition-colors"
+                  >
+                    Renumber
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Revert-to-detection confirmation. */}
+          {confirmingRevert && data && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center fade-in"
+              style={{ background: "rgba(28,24,19,0.45)" }}
+            >
+              <div className="bg-paper border border-line p-10 max-w-sm w-full mx-6 flex flex-col gap-6">
+                <div>
+                  <p className="eyebrow text-accent mb-3">Restore detection</p>
+                  <h2 className="font-display text-2xl font-medium text-ink leading-tight">
+                    Revert to the original detection?
+                  </h2>
+                  <p className="mt-2 font-display text-base text-muted italic">
+                    All manual edits, additions and deletions will be discarded and every
+                    element returned to what the model first detected.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmingRevert(false)}
+                    className="flex-1 py-3 eyebrow text-muted border border-line hover:border-ink hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRevert}
+                    className="flex-1 py-3 eyebrow !text-paper bg-accent hover:bg-ink transition-colors"
+                  >
+                    Revert
                   </button>
                 </div>
               </div>
@@ -518,6 +850,9 @@ export default function PaintingDetailPage() {
                       onSelect={handleSelect}
                       showBoxes={showBoxes}
                       numbers={numbers}
+                      drawMode={isAuthenticated && addMode}
+                      onDrawComplete={handleDrawComplete}
+                      selectedIds={selectedIds}
                     />
                   </div>
                 </div>
@@ -552,12 +887,74 @@ export default function PaintingDetailPage() {
                     className="flex-1 overflow-y-auto min-h-0 pt-2"
                   >
                     {activeTab === "elements" && (
-                      <ElementList
-                        elements={data.elements}
-                        highlightedId={highlightedId}
-                        onHover={setHighlightedId}
-                        numbers={numbers}
-                      />
+                      <>
+                        {isAuthenticated && (
+                          <div className="flex flex-wrap items-center justify-end gap-3 pb-2 border-b border-line mb-1">
+                            <button
+                              onClick={() => { setElementError(null); setAddMode((v) => !v); }}
+                              className={["eyebrow transition-colors flex items-center gap-1.5", addMode ? "text-accent" : "text-muted hover:text-accent"].join(" ")}
+                              title={addMode ? "Cancel drawing" : "Draw a box to add an element"}
+                            >
+                              {addMode ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                              )}
+                              {addMode ? "Cancel" : "Add"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmingRenumber(true)}
+                              className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+                              title="Renumber elements by category"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+                              </svg>
+                              Renumber
+                            </button>
+                            <button
+                              onClick={() => setConfirmingRevert(true)}
+                              className="eyebrow text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+                              title="Revert to the original detection"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 2v6h6"/><path d="M3 8a9 9 0 1 0 2.83-2.83L3 8"/>
+                              </svg>
+                              Revert
+                            </button>
+                            {selectedIds.size > 0 && (
+                              <>
+                                <span className="w-px h-3.5 bg-line" aria-hidden />
+                                <button
+                                  onClick={() => setConfirmingBulkDelete(true)}
+                                  className="eyebrow text-accent hover:text-ink transition-colors flex items-center gap-1.5"
+                                  title="Delete selected elements"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                  </svg>
+                                  Delete {selectedIds.size}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        <ElementList
+                          elements={data.elements}
+                          highlightedId={highlightedId}
+                          onHover={setHighlightedId}
+                          numbers={numbers}
+                          isAuthenticated={isAuthenticated}
+                          selectedIds={selectedIds}
+                          onToggleSelect={toggleSelect}
+                          onEdit={openEditElement}
+                          onDelete={deleteOneElement}
+                        />
+                      </>
                     )}
                     {activeTab === "notes" && (
                       <div className="pr-1">
