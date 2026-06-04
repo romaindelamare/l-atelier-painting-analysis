@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     image_dir: str = "./data/images"
     db_url: str = "sqlite:///./data/paintings.db"
 
-    palette_size: int = 6
+    palette_size: int = 10
 
     # Single-user authentication. ``auth_password`` is the login password and
     # ``auth_jwt_secret`` signs the short-lived access tokens. Leaving either

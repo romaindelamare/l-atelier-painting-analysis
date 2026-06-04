@@ -6,6 +6,7 @@ from app.api.dependencies import (
     get_image_storage,
     get_painting_repository,
     get_painting_service,
+    get_palette_extractor,
     require_auth,
 )
 from app.interfaces.element_detector import DetectionError
@@ -15,6 +16,7 @@ from app.schemas.painting import PaintingCreate, PaintingDetail, PaintingSummary
 from app.services.painting_service import PaintingService
 
 from app.models.painting import Painting
+from app.models.palette_color import PaletteColor
 
 router = APIRouter(prefix="/api/paintings", tags=["paintings"])
 
@@ -127,6 +129,29 @@ def delete_painting(
     file_path = storage.path_for(painting.filename)
     if file_path.exists():
         file_path.unlink()
+
+
+@router.post("/{painting_id}/palette", response_model=PaintingDetail)
+def reanalyze_palette(
+    painting_id: int,
+    repository: PaintingRepository = Depends(get_painting_repository),
+    storage: ImageStorage = Depends(get_image_storage),
+    palette_extractor=Depends(get_palette_extractor),
+    _: None = Depends(require_auth),
+) -> PaintingDetail:
+    """Re-extract the color palette from the stored image file."""
+    painting = repository.get(painting_id)
+    if painting is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Painting not found.")
+
+    image_path = storage.path_for(painting.filename)
+    if not image_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image file not found.")
+
+    colors = palette_extractor.extract(image_path.read_bytes())
+    palette = [PaletteColor(hex=c.hex, r=c.r, g=c.g, b=c.b, proportion=c.proportion) for c in colors]
+    updated = repository.replace_palette(painting_id, palette)
+    return painting_to_detail(updated)
 
 
 @router.patch("/{painting_id}", response_model=PaintingDetail)

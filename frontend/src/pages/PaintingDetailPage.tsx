@@ -10,6 +10,7 @@ import {
   createElement,
   deleteElement,
   deletePainting,
+  reanalyzePalette,
   renumberElements,
   revertElements,
   updateElement,
@@ -64,6 +65,8 @@ export default function PaintingDetailPage() {
   const [confirmingRenumber, setConfirmingRenumber] = useState(false);
   const [confirmingRevert, setConfirmingRevert] = useState(false);
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [reanalyzingPalette, setReanalyzingPalette] = useState(false);
+  const [paletteError, setPaletteError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const zoomTriggerRef = useRef<HTMLElement | null>(null);
@@ -254,6 +257,19 @@ export default function PaintingDetailPage() {
     setConfirmingRevert(false);
     setSelectedIds(new Set());
     setData(await revertElements(data.id));
+  }
+
+  async function handleReanalyzePalette() {
+    if (!data) return;
+    setPaletteError(null);
+    setReanalyzingPalette(true);
+    try {
+      setData(await reanalyzePalette(data.id));
+    } catch (err) {
+      setPaletteError(err instanceof Error ? err.message : "Failed to re-analyze palette.");
+    } finally {
+      setReanalyzingPalette(false);
+    }
   }
 
   function openEditElement(element: DetectedElement) {
@@ -608,8 +624,22 @@ export default function PaintingDetailPage() {
                       </div>
                     )}
                     {activeTab === "color" && (
-                      <div className="pr-1">
+                      <div className="pr-1 flex flex-col gap-4">
                         <ColorPalette palette={data.palette} />
+                        {isAuthenticated && (
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={handleReanalyzePalette}
+                              disabled={reanalyzingPalette}
+                              className="w-full py-2 px-4 text-sm border border-line text-muted hover:text-ink hover:border-ink/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {reanalyzingPalette ? "RE-ANALYZING…" : "RE-ANALYZE PALETTE"}
+                            </button>
+                            {paletteError && (
+                              <p className="text-xs text-red-500">{paletteError}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -970,8 +1000,22 @@ export default function PaintingDetailPage() {
                       </div>
                     )}
                     {activeTab === "color" && (
-                      <div className="pr-1">
+                      <div className="pr-1 flex flex-col gap-4">
                         <ColorPalette palette={data.palette} />
+                        {isAuthenticated && (
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={handleReanalyzePalette}
+                              disabled={reanalyzingPalette}
+                              className="w-full py-2 px-4 text-sm border border-line text-muted hover:text-ink hover:border-ink/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {reanalyzingPalette ? "RE-ANALYZING…" : "RE-ANALYZE PALETTE"}
+                            </button>
+                            {paletteError && (
+                              <p className="text-xs text-red-500">{paletteError}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -197,6 +197,23 @@ class PaintingRepository:
         self._db.commit()
         return self.get(painting_id)
 
+    def replace_palette(
+        self, painting_id: int, palette: list[PaletteColor]
+    ) -> Painting | None:
+        """Replace the stored palette for a painting with a freshly-extracted one."""
+
+        painting = self.get(painting_id)
+        if painting is None:
+            return None
+        for old in list(painting.palette):
+            self._db.delete(old)
+        self._db.flush()
+        for color in palette:
+            color.painting_id = painting_id
+            self._db.add(color)
+        self._db.commit()
+        return self.get(painting_id)
+
     def _next_position(self, painting_id: int) -> int:
         positions = self._db.scalars(
             select(DetectedElement.position).where(

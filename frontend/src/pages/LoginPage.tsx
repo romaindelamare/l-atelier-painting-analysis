@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(password);
-      navigate(from ?? "/upload", { replace: true });
+      navigate(from ?? "/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
       setSubmitting(false);

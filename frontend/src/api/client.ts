@@ -240,3 +240,9 @@ export async function revertElements(
 ): Promise<PaintingDetail> {
   return jsonAuth(`${elementsBase(paintingId)}/revert`, "POST");
 }
+
+export async function reanalyzePalette(
+  paintingId: number,
+): Promise<PaintingDetail> {
+  return jsonAuth(`/api/paintings/${paintingId}/palette`, "POST");
+}
